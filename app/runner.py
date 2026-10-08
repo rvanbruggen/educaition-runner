@@ -44,7 +44,13 @@ async def _run_agent(prompt: str, max_turns: int, transcript_path: Path) -> dict
     """Run the Claude Agent SDK; return {'cost': float, 'is_error': bool, 'result': str}."""
     from claude_agent_sdk import ClaudeAgentOptions, query
 
+    def _stderr(line: str):
+        # The SDK only says "Check stderr output for details" — keep the details.
+        with open(transcript_path, "a", encoding="utf-8") as fh:
+            fh.write(f"[{db.now()}] stderr: {repo._redact(line.rstrip())}\n")
+
     options = ClaudeAgentOptions(
+        stderr=_stderr,
         cwd=str(repo.REPO_DIR),
         model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-5"),
         max_turns=max_turns,
@@ -67,6 +73,8 @@ async def _run_agent(prompt: str, max_turns: int, transcript_path: Path) -> dict
 
 
 def _agent_task(task_cfg: dict, transcript: Path) -> dict:
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise RuntimeError("ANTHROPIC_API_KEY ontbreekt in .env (nodig voor de agenttaken)")
     REPORT_PATH.unlink(missing_ok=True)
     try:
         repo.sync()

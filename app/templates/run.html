@@ -11,7 +11,7 @@
     <tr><th>Trigger</th><td>{{ run.trigger }}</td></tr>
     <tr><th>Samenvatting</th><td>{{ run.summary or '—' }}</td></tr>
     <tr><th>Commit</th><td>{{ run.commit_hash or '—' }}</td></tr>
-    <tr><th>Items</th><td>{{ run.items }}</td></tr>
+    <tr><th>Items</th><td>{{ run['items'] }}</td></tr>
     <tr><th>Kosten</th><td>${{ "%.4f"|format(run.cost_usd) }}</td></tr>
     {% if run.error %}<tr><th>Fout</th><td>{{ run.error }}</td></tr>{% endif %}
   </table>

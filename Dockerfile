@@ -17,6 +17,9 @@ ENV HOME=/data/home
 ENV CLAUDE_CONFIG_DIR=/data/home/.claude
 ENV DATA_DIR=/data
 ENV TASKS_DIR=/tasks
+# The container runs as root; tell Claude Code it is a sandbox so the agent
+# tasks may use bypassPermissions (otherwise the CLI exits with code 1).
+ENV IS_SANDBOX=1
 
 WORKDIR /app
 COPY app/ /app/

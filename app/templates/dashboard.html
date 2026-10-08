@@ -40,7 +40,7 @@
       <span class="dot d-{{ 'running' if r.status=='running' else ('ok' if r.status=='ok' else ('warn' if r.status=='warning' else 'err')) }}"></span>
       <strong>{{ task_names.get(r.task, r.task) }}</strong>
       {% if r.commit_hash %}<span class="commit">{{ r.commit_hash[:7] }}</span>{% endif %}
-      {% if r.items %}&middot; {{ r.items }} item(s){% endif %}
+      {% if r['items'] %}&middot; {{ r['items'] }} item(s){% endif %}
       {% if r.trigger != 'schedule' %}&middot; {{ 'handmatig' if r.trigger == 'manual' else r.trigger }}{% endif %}<br>
       <a href="/runs/{{ r.id }}">{{ r.summary or '(details)' }}</a><br>
       <span class="when">{{ r.started }} UTC
