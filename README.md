@@ -2,13 +2,13 @@
 
 Zelfstandige Docker-runner voor de geplande taken van [educaition.today](https://www.educaition.today) — het EducAItion-equivalent van de Positron-admin, maar met website-scraping als invoer in plaats van alleen RSS. Het plan en de fasering staan in [PLAN.md](PLAN.md).
 
-Eén container bevat een scheduler (APScheduler, cron-tijden in Europe/Brussels), de pipelines en een webinterface op poort 8080.
+Eén container bevat een scheduler (APScheduler, cron-tijden in Europe/Brussels), de pipelines en een webinterface (standaard op poort 8090 van de host, in te stellen met `RUNNER_PORT` in `.env`).
 
 ## Architectuur
 
 ```
 docker-compose (1 container, restart: unless-stopped, volume ./data)
-└── FastAPI app (poort 8080)
+└── FastAPI app (poort 8080 in de container → RUNNER_PORT op de host, standaard 8090)
     ├── APScheduler ── cron per taak (tasks/tasks.yml)
     ├── bronnen-verzamelen (elke 2 uur, geen LLM)
     │     tasks/sources.yml → rss | sitemap | html → trefwoordfilter → tabel candidates
@@ -34,13 +34,13 @@ cp .env.example .env && nano .env           # OPENAI_API_KEY en GITHUB_TOKEN
 docker compose up -d --build
 ```
 
-Daarna open je `http://<host>:8080`. Updaten na een `git push` vanaf je Mac: `~/educaition-runner/deploy.sh` (pull + rebuild, zoals bij Positron).
+Daarna open je `http://<host>:8090` (of de poort die je in `RUNNER_PORT` zette). Updaten na een `git push` vanaf je Mac: `~/educaition-runner/deploy.sh` (pull + rebuild, zoals bij Positron).
 
 Eerste test: klik **Run nu** bij "Bronnen verzamelen" en daarna bij "Artikelscan Vlaanderen", en bekijk het resultaat in **Review** en **Kandidaten**.
 
 ### Bereikbaarheid buitenshuis (optioneel)
 
-De UI is standaard alleen op je thuisnetwerk bereikbaar. Wil je hem ook onderweg zien: installeer [Tailscale](https://tailscale.com) op de host en je telefoon, en surf naar `http://<tailscale-naam>:8080`. Zet in dat geval ook `ADMIN_PASSWORD` in `.env` (gebruiker: `rik`).
+De UI is standaard alleen op je thuisnetwerk bereikbaar. Wil je hem ook onderweg zien: installeer [Tailscale](https://tailscale.com) op de host en je telefoon, en surf naar `http://<tailscale-naam>:8090`. Zet in dat geval ook `ADMIN_PASSWORD` in `.env` (gebruiker: `rik`).
 
 ## Fase 1: schaduwmodus
 
