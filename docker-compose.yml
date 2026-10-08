@@ -1,0 +1,14 @@
+services:
+  runner:
+    build: .
+    container_name: educaition-runner
+    env_file: .env
+    environment:
+      - TZ=${TZ:-Europe/Brussels}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+      - ./tasks:/tasks:ro
+    restart: unless-stopped
+    stop_grace_period: 60s

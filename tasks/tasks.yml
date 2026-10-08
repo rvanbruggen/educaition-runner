@@ -1,0 +1,40 @@
+# Geplande taken voor educaition.today
+# cron: standaard 5-velden cron, geïnterpreteerd in TZ (Europe/Brussels)
+# max_turns: bovengrens op agent-iteraties (kostenrem)
+
+tasks:
+  artikelen-vlaanderen:
+    name: "Artikelscan Vlaanderen"
+    prompt: artikelen-vlaanderen.md
+    cron: "8 5 * * *"
+    schedule_label: "dagelijks om 05:08"
+    interval_hours: 24
+    grace_hours: 8
+    max_turns: 150
+
+  digest-vlaanderen:
+    name: "Samengevat (Vlaanderen)"
+    prompt: digest-vlaanderen.md
+    cron: "7 18 * * 0"
+    schedule_label: "zondag om 18:07"
+    interval_hours: 168
+    grace_hours: 12
+    max_turns: 100
+
+  digest-internationaal:
+    name: "Internationaal samengevat"
+    prompt: digest-internationaal.md
+    cron: "30 18 * * 0"
+    schedule_label: "zondag om 18:30"
+    interval_hours: 168
+    grace_hours: 12
+    max_turns: 150
+
+  faq-discussie-onderhoud:
+    name: "FAQ & Ter discussie onderhoud"
+    prompt: faq-discussie-onderhoud.md
+    cron: "20 19 * * 0"
+    schedule_label: "zondag om 19:20"
+    interval_hours: 168
+    grace_hours: 12
+    max_turns: 100

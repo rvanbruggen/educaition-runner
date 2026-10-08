@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EducAItion Taakbeheer</title>
+<style>
+  :root{--bg:#f6f5f1;--card:#fff;--text:#1f2933;--muted:#6b7280;--line:#e5e3dc;
+    --ok:#1a7f4b;--ok-bg:#e3f3ea;--warn:#a05a00;--warn-bg:#fdf0dc;
+    --err:#b3261e;--err-bg:#fbe7e6;--late:#5b5f66;--late-bg:#ececec;--accent:#0f4c81;}
+  @media (prefers-color-scheme: dark){:root{--bg:#15171a;--card:#1f2226;--text:#e8e6e1;
+    --muted:#9aa0a6;--line:#33373d;--ok:#5dc389;--ok-bg:#173226;--warn:#e0a458;--warn-bg:#33270f;
+    --err:#e5756e;--err-bg:#361715;--late:#a0a4ab;--late-bg:#26292d;--accent:#7fb2e5;}}
+  *{box-sizing:border-box} body{background:var(--bg);color:var(--text);
+    font:16px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;margin:0;padding:1.25rem;}
+  main{max-width:760px;margin:0 auto;} h1{font-size:1.35rem;margin:0 0 .2rem;}
+  .sub{color:var(--muted);font-size:.85rem;margin-bottom:1.25rem;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:.9rem 1rem;margin-bottom:.75rem;}
+  .row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;}
+  .tname{font-weight:600;flex:1 1 auto;}
+  .badge{font-size:.72rem;font-weight:600;padding:.15rem .55rem;border-radius:999px;white-space:nowrap;}
+  .b-ok{color:var(--ok);background:var(--ok-bg);} .b-warn{color:var(--warn);background:var(--warn-bg);}
+  .b-err{color:var(--err);background:var(--err-bg);} .b-late{color:var(--late);background:var(--late-bg);}
+  .meta{color:var(--muted);font-size:.8rem;margin-top:.15rem;}
+  .last{font-size:.88rem;margin-top:.45rem;}
+  h2{font-size:1rem;margin:1.5rem 0 .6rem;}
+  .run{border-top:1px solid var(--line);padding:.55rem 0;font-size:.85rem;}
+  .run:first-of-type{border-top:none;}
+  .when{color:var(--muted);font-size:.78rem;}
+  .dot{display:inline-block;width:.55rem;height:.55rem;border-radius:50%;margin-right:.35rem;}
+  .d-ok{background:var(--ok);} .d-warn{background:var(--warn);} .d-err{background:var(--err);}
+  .d-running{background:var(--accent);}
+  .commit{font-family:ui-monospace,monospace;font-size:.75rem;color:var(--accent);}
+  button{font:inherit;font-size:.78rem;padding:.3rem .7rem;border-radius:8px;
+    border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;}
+  button:hover{border-color:var(--accent);}
+  form{display:inline;margin:0;}
+  a{color:var(--accent);text-decoration:none;} a:hover{text-decoration:underline;}
+  footer{color:var(--muted);font-size:.75rem;margin-top:2rem;}
+</style>
+</head>
+<body>
+<main>
+  <h1>EducAItion Taakbeheer</h1>
+  <div class="sub">Kosten deze maand: ${{ "%.2f"|format(month_cost) }} &middot;
+    <a href="/">vernieuwen</a></div>
+
+  {% for t in tasks %}
+  <div class="card">
+    <div class="row">
+      <span class="tname">{{ t.name }}</span>
+      {% if t.running %}<span class="badge b-late">Bezig&hellip;</span>
+      {% elif not t.enabled %}<span class="badge b-late">Gepauzeerd</span>
+      {% elif t.overdue %}<span class="badge b-late">Achterstallig</span>
+      {% elif t.last and t.last.status == 'ok' %}<span class="badge b-ok">OK</span>
+      {% elif t.last and t.last.status == 'warning' %}<span class="badge b-warn">Aandacht</span>
+      {% elif t.last %}<span class="badge b-err">Fout</span>
+      {% else %}<span class="badge b-late">Nog geen runs</span>{% endif %}
+      <form method="post" action="/run/{{ t.id }}"><button {% if t.running %}disabled{% endif %}>Run nu</button></form>
+      <form method="post" action="/toggle/{{ t.id }}"><button>{{ 'Pauzeer' if t.enabled else 'Hervat' }}</button></form>
+    </div>
+    <div class="meta">{{ t.schedule }} &middot; volgende run: {{ t.next_run }}</div>
+    {% if t.last %}
+    <div class="last">
+      <span class="dot d-{{ 'running' if t.last.status=='running' else ('ok' if t.last.status=='ok' else ('warn' if t.last.status=='warning' else 'err')) }}"></span>
+      <a href="/runs/{{ t.last.id }}">{{ t.last.summary or '(run zonder samenvatting)' }}</a>
+    </div>
+    <div class="meta">Laatste run: {{ t.last.started }} UTC
+      {% if t.last.cost_usd %} &middot; ${{ "%.2f"|format(t.last.cost_usd) }}{% endif %}</div>
+    {% else %}<div class="last meta">nog geen run geregistreerd</div>{% endif %}
+  </div>
+  {% endfor %}
+
+  <h2>Recente runs</h2>
+  <div class="card">
+    {% if not runs %}<span class="meta">Nog geen runs.</span>{% endif %}
+    {% for r in runs %}
+    <div class="run">
+      <span class="dot d-{{ 'running' if r.status=='running' else ('ok' if r.status=='ok' else ('warn' if r.status=='warning' else 'err')) }}"></span>
+      <strong>{{ task_names.get(r.task, r.task) }}</strong>
+      {% if r.commit_hash %}<span class="commit">{{ r.commit_hash[:7] }}</span>{% endif %}
+      {% if r.items %}&middot; {{ r.items }} item(s){% endif %}
+      {% if r.trigger == 'manual' %}&middot; handmatig{% endif %}<br>
+      <a href="/runs/{{ r.id }}">{{ r.summary or '(details)' }}</a><br>
+      <span class="when">{{ r.started }} UTC
+        {% if r.cost_usd %}&middot; ${{ "%.2f"|format(r.cost_usd) }}{% endif %}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <footer>educaition-runner &middot; draait in Docker &middot; tijden in UTC tenzij anders vermeld</footer>
+</main>
+</body>
+</html>
