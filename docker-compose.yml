@@ -6,8 +6,8 @@ services:
     environment:
       - TZ=${TZ:-Europe/Brussels}
     ports:
-      # Host port from RUNNER_PORT in .env (8080 is taken on the Docker host).
-      - "${RUNNER_PORT:-8090}:8080"
+      # Host port from RUNNER_PORT in .env (8080 and 8090 are taken on the Docker host).
+      - "${RUNNER_PORT:-8095}:8080"
     volumes:
       - ./data:/data
       - ./tasks:/tasks:ro
