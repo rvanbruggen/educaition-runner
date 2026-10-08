@@ -18,7 +18,7 @@ docker-compose (1 container, restart: unless-stopped, volume ./data)
     │     → LLM "classify" (relevant? tags uit _data/tags.yml, zelfde nieuws als een post?)
     │     → LLM "write" (titel + 2-4 zinnen) → post renderen + valideren in code
     │     → shadow: wachtrij /review   ·   auto: commit + push (max. 6 per run)
-    ├── agent (v1)      Claude Agent SDK op tasks/*.md — voor de taken zonder pipeline, nu mode: off
+    ├── agent (v1)      Claude Agent SDK op tasks/*.md — voor de taken zonder pipeline, mode: auto
     └── web UI          dashboard · review · kandidaten · bronnen · vergelijking · instellingen
 ```
 
@@ -67,4 +67,4 @@ Elke stap (`classify`, `write`, `digest`) heeft een eigen model in de vorm `prov
 
 - `.env` bevat de API-keys en het GitHub-token en staat in .gitignore — nooit committen.
 - Het GitHub-token heeft alleen toegang tot het educaition-repo; foutmeldingen van git worden ontdaan van het token voor ze gelogd worden.
-- De v1-agenttaken draaien met `bypassPermissions` binnen de container; ze staan op `mode: off` zolang Cowork ze uitvoert.
+- De v1-agenttaken draaien met `bypassPermissions` binnen de container.

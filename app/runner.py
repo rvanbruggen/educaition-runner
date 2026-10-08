@@ -4,7 +4,7 @@ Task kinds (tasks.yml `kind`):
   collect   read all sources into the candidates table (no LLM)
   articles  the article pipeline (see articles.py)
   agent     v1: a Claude Agent SDK run of a prompt in tasks/*.md (kept for the
-            tasks that have no pipeline yet; `mode: off` while Cowork runs them)
+            tasks that have no pipeline yet)
 """
 import asyncio
 import json

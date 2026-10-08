@@ -26,6 +26,10 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("main")
 
 TASKS: dict = yaml.safe_load((runner.TASKS_DIR / "tasks.yml").read_text(encoding="utf-8"))["tasks"]
+for _cfg in TASKS.values():
+    # YAML 1.1 reads an unquoted `mode: off` as False; the code compares to "off".
+    if _cfg.get("mode") is False:
+        _cfg["mode"] = "off"
 TZ = os.environ.get("TZ", "Europe/Brussels")
 ARTICLE_TASK = next((k for k, v in TASKS.items() if v.get("kind") == "articles"), None)
 
@@ -127,7 +131,7 @@ def run_now(task_id: str):
     if task_id not in TASKS:
         raise HTTPException(404)
     if TASKS[task_id].get("mode") == "off":
-        return back("/", "Deze taak staat op mode=off (draait nog in Cowork).")
+        return back("/", "Deze taak staat op mode=off.")
     threading.Thread(target=runner.execute_task,
                      args=(task_id, TASKS[task_id]), kwargs={"trigger": "manual"},
                      daemon=True).start()

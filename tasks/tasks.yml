@@ -25,11 +25,11 @@ tasks:
     interval_hours: 24
     grace_hours: 8
 
-  # --- v1-agenttaken: draaien nog in Cowork; worden in fase 2-4 pipelines ---
+  # --- v1-agenttaken (Claude Agent SDK); worden in fase 2-4 pipelines ---
   digest-vlaanderen:
     name: "Samengevat (Vlaanderen)"
     kind: agent
-    mode: off
+    mode: auto
     prompt: digest-vlaanderen.md
     cron: "7 18 * * 0"
     schedule_label: "zondag om 18:07"
@@ -40,7 +40,7 @@ tasks:
   digest-internationaal:
     name: "Internationaal samengevat"
     kind: agent
-    mode: off
+    mode: auto
     prompt: digest-internationaal.md
     cron: "30 18 * * 0"
     schedule_label: "zondag om 18:30"
@@ -51,7 +51,7 @@ tasks:
   faq-discussie-onderhoud:
     name: "FAQ & Ter discussie onderhoud"
     kind: agent
-    mode: off
+    mode: auto
     prompt: faq-discussie-onderhoud.md
     cron: "20 19 * * 0"
     schedule_label: "zondag om 19:20"
