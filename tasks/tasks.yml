@@ -1,7 +1,8 @@
 # Geplande taken voor educaition.today
-# cron:  standaard 5-velden cron, geïnterpreteerd in TZ (Europe/Brussels)
+# cron:  5-velden cron in TZ (Europe/Brussels). Weekdag als naam (sun, mon…):
+#        APScheduler telt 0 als maandag, niet als zondag.
 # kind:  collect | articles | agent        (zie app/runner.py)
-# mode:  off     — geplande runs worden overgeslagen (taak draait nog in Cowork)
+# mode:  off     — geplande runs worden overgeslagen (taak draait niet gepland)
 #        shadow  — pipeline draait, maar publiceert niet: resultaat naar /review
 #        auto    — publiceert zelf zodra de validatie slaagt
 # max_turns: bovengrens op agent-iteraties (alleen kind: agent)
@@ -31,7 +32,7 @@ tasks:
     kind: agent
     mode: auto
     prompt: digest-vlaanderen.md
-    cron: "7 18 * * 0"
+    cron: "7 18 * * sun"
     schedule_label: "zondag om 18:07"
     interval_hours: 168
     grace_hours: 12
@@ -42,7 +43,7 @@ tasks:
     kind: agent
     mode: auto
     prompt: digest-internationaal.md
-    cron: "30 18 * * 0"
+    cron: "30 18 * * sun"
     schedule_label: "zondag om 18:30"
     interval_hours: 168
     grace_hours: 12
@@ -53,7 +54,7 @@ tasks:
     kind: agent
     mode: auto
     prompt: faq-discussie-onderhoud.md
-    cron: "20 19 * * 0"
+    cron: "20 19 * * sun"
     schedule_label: "zondag om 19:20"
     interval_hours: 168
     grace_hours: 12

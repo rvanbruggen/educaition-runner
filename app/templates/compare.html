@@ -2,10 +2,11 @@
 {% block title %}Vergelijking — EducAItion{% endblock %}
 {% block width %}1000px{% endblock %}
 {% block content %}
-  <h1>Vergelijking met Cowork</h1>
-  <div class="sub">Artikels die sinds {{ since }} aan de site werden toegevoegd (door Cowork of
-    handmatig), en wat de runner met dezelfde URL deed. Doel fase 1: de runner vindt minstens wat
-    Cowork vond. <form method="get" action="/compare" style="margin-left:.4rem">
+  <h1>Vergelijking site en runner</h1>
+  <div class="sub">Artikels die sinds {{ since }} aan de site werden toegevoegd, en wat de runner
+    met dezelfde URL deed. Tot 8 oktober 2026 zette Cowork de artikels online; sindsdien komen ze
+    via Review of handmatig. Staat een handmatig toegevoegd artikel op "niet gezien", dan ontbreekt
+    er wellicht een bron in sources.yml. <form method="get" action="/compare" style="margin-left:.4rem">
       <input type="text" name="since" value="{{ since }}" size="10"> <button>Toon</button></form></div>
 
   <h2>Op de site gezet ({{ site_rows|length }}) — runner vond er {{ found }}</h2>

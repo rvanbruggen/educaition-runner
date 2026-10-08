@@ -2,6 +2,8 @@
 
 Zelfstandige Docker-runner voor de geplande taken van [educaition.today](https://www.educaition.today) — het EducAItion-equivalent van de Positron-admin, maar met website-scraping als invoer in plaats van alleen RSS. Het plan en de fasering staan in [PLAN.md](PLAN.md).
 
+De versie staat in `app/version.py` en in de voettekst van de webinterface.
+
 Eén container bevat een scheduler (APScheduler, cron-tijden in Europe/Brussels), de pipelines en een webinterface (standaard op poort 8095 van de host, in te stellen met `RUNNER_PORT` in `.env`).
 
 ## Architectuur
@@ -44,13 +46,13 @@ De UI is standaard alleen op je thuisnetwerk bereikbaar. Wil je hem ook onderweg
 
 ## Fase 1: schaduwmodus
 
-De artikelscan staat op `mode: shadow`: hij draait elke ochtend, maar zet niets online. Cowork blijft intussen de echte artikels publiceren.
+De artikelscan staat op `mode: shadow`: hij draait elke ochtend, maar zet niets online. De Cowork-taken staan sinds 8 oktober 2026 uit, dus artikels komen alleen nog online via **Review**.
 
-- **Review**: wat de runner zou publiceren. Je kunt hier een artikel publiceren dat Cowork miste, of afwijzen.
-- **Vergelijking**: elk artikel dat Cowork op de site zette, en wat de runner met dezelfde URL deed ("niet gezien" = bron ontbreekt of de feed was al doorgeschoven).
+- **Review**: wat de runner zou publiceren. Publiceer of wijs af.
+- **Vergelijking**: elk artikel dat op de site kwam (tot 8 oktober door Cowork, daarna via Review of handmatig), en wat de runner met dezelfde URL deed ("niet gezien" = bron ontbreekt of de feed was al doorgeschoven).
 - **Bronnen**: per bron of hij werkt en wat hij oplevert.
 
-Na ongeveer twee weken: als de runner minstens vindt wat Cowork vond, zet je in `tasks/tasks.yml` `mode: auto` bij `artikelen-vlaanderen` en schakel je de Cowork-taak `educaition-artikelen-vlaanderen` uit.
+Vertrouw je de selectie, zet dan in `tasks/tasks.yml` `mode: auto` bij `artikelen-vlaanderen`: dan publiceert de scan zelf (max. 6 per run).
 
 ## Modellen en kosten
 

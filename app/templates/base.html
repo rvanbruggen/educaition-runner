@@ -4,18 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}EducAItion Taakbeheer{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#f6f5f1;--card:#fff;--text:#1f2933;--muted:#6b7280;--line:#e5e3dc;
+  :root{--bg:#fbf9f4;--card:#fff;--text:#232946;--muted:#5f6577;--line:#e7e3d8;
     --ok:#1a7f4b;--ok-bg:#e3f3ea;--warn:#a05a00;--warn-bg:#fdf0dc;
-    --err:#b3261e;--err-bg:#fbe7e6;--late:#5b5f66;--late-bg:#ececec;--accent:#0f4c81;}
+    --err:#b3261e;--err-bg:#fbe7e6;--late:#5b5f66;--late-bg:#ececec;--accent:#4f46e5;--accent-2:#a855f7;}
   @media (prefers-color-scheme: dark){:root{--bg:#15171a;--card:#1f2226;--text:#e8e6e1;
     --muted:#9aa0a6;--line:#33373d;--ok:#5dc389;--ok-bg:#173226;--warn:#e0a458;--warn-bg:#33270f;
-    --err:#e5756e;--err-bg:#361715;--late:#a0a4ab;--late-bg:#26292d;--accent:#7fb2e5;}}
+    --err:#e5756e;--err-bg:#361715;--late:#a0a4ab;--late-bg:#26292d;--accent:#a5b4fc;--accent-2:#d8b4fe;}}
   *{box-sizing:border-box} body{background:var(--bg);color:var(--text);
-    font:16px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;margin:0;padding:1.25rem 1rem;}
+    font:16px/1.5 Inter,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0;padding:1.25rem 1rem;}
   main{max-width:{% block width %}760px{% endblock %};margin:0 auto;} h1{font-size:1.35rem;margin:0 0 .2rem;}
+  .brand{display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem;color:var(--text);}
+  .brand:hover{text-decoration:none;} .logo{display:block;flex:none;}
+  .brand-title{font-family:Fraunces,Georgia,serif;font-size:1.45rem;font-weight:700;line-height:1.1;}
+  .brand-title .ai{background:linear-gradient(120deg,var(--accent),var(--accent-2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .brand-sub{display:block;font-family:Inter,sans-serif;font-size:.75rem;font-weight:600;
+    color:var(--muted);letter-spacing:.04em;text-transform:uppercase;}
+  .version{font-size:.7rem;font-weight:600;color:var(--accent);border:1px solid var(--line);
+    border-radius:999px;padding:.05rem .45rem;margin-left:auto;font-variant-numeric:tabular-nums;}
   nav{display:flex;flex-wrap:wrap;gap:.25rem .9rem;font-size:.85rem;margin-bottom:1rem;
-    padding-bottom:.6rem;border-bottom:1px solid var(--line);}
+    padding-bottom:.6rem;border-bottom:2px solid var(--text);}
   nav a.on{font-weight:600;color:var(--text);}
   .sub{color:var(--muted);font-size:.85rem;margin-bottom:1.25rem;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
@@ -58,6 +71,11 @@
 </head>
 <body>
 <main>
+  <a class="brand" href="/">
+    {% include "_logo.svg" %}
+    <span class="brand-title">Educ<span class="ai">AI</span>tion<span class="brand-sub">Taakbeheer</span></span>
+    <span class="version">v{{ version }}</span>
+  </a>
   <nav>
     {% set here = active|default('') %}
     <a href="/" class="{{ 'on' if here=='dash' }}">Dashboard</a>
@@ -69,7 +87,7 @@
   </nav>
   {% if flash %}<div class="flash">{{ flash }}</div>{% endif %}
   {% block content %}{% endblock %}
-  <footer>educaition-runner &middot; draait in Docker &middot; tijden in UTC tenzij anders vermeld</footer>
+  <footer>educaition-runner v{{ version }} &middot; draait in Docker &middot; tijden in UTC tenzij anders vermeld</footer>
 </main>
 </body>
 </html>

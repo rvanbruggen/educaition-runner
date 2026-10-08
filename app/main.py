@@ -13,6 +13,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 import db
@@ -21,6 +22,7 @@ import repo
 import runner
 import sources
 import vocab
+from version import __version__
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("main")
@@ -36,6 +38,9 @@ ARTICLE_TASK = next((k for k, v in TASKS.items() if v.get("kind") == "articles")
 app = FastAPI(title="EducAItion Taakbeheer")
 jinja = Environment(loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), "templates")),
                     autoescape=select_autoescape(["html"]))
+jinja.globals["version"] = __version__
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")),
+          name="static")
 
 scheduler = BackgroundScheduler(timezone=TZ)
 
@@ -288,4 +293,4 @@ async def settings_save(request: Request):
 
 @app.get("/health", response_class=PlainTextResponse)
 def health():
-    return "ok"
+    return f"ok {__version__}"

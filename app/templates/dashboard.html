@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-  <h1>EducAItion Taakbeheer</h1>
+  <h1>Dashboard</h1>
   <div class="sub">Kosten deze maand: ${{ "%.2f"|format(month_cost) }} &middot;
     <a href="/">vernieuwen</a></div>
 
@@ -8,7 +8,7 @@
   <div class="card">
     <div class="row">
       <span class="tname">{{ t.name }}</span>
-      {% if t.mode == 'off' %}<span class="badge b-late">Uit (draait in Cowork)</span>
+      {% if t.mode == 'off' %}<span class="badge b-late">Uit</span>
       {% elif t.mode == 'shadow' %}<span class="badge b-warn">Schaduw</span>{% endif %}
       {% if t.running %}<span class="badge b-late">Bezig&hellip;</span>
       {% elif not t.enabled %}<span class="badge b-late">Gepauzeerd</span>
