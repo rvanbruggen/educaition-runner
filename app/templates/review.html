@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Review — EducAItion{% endblock %}
+{% block width %}900px{% endblock %}
+{% block content %}
+  <h1>Review</h1>
+  <div class="sub">Artikels die de validatie doorstonden en wachten op publicatie.
+    {% if mode == 'shadow' %}De artikelscan staat in <strong>schaduwmodus</strong>: niets gaat
+    vanzelf online. Let op: Cowork draait nog parallel, dus publiceer hier alleen wat Cowork gemist heeft.
+    {% else %}De artikelscan publiceert zelf (max. 6 per run); wat hier staat wacht op de volgende run.{% endif %}</div>
+
+  {% if not items %}<div class="card meta">De wachtrij is leeg.</div>{% endif %}
+  {% for c in items %}
+  {% set p = c.data.post %}
+  <div class="card">
+    <div class="row">
+      <span class="tname">{{ p.title }}</span>
+      <span class="badge b-late">{{ c.source }}</span>
+    </div>
+    <div class="meta">{{ p.date }} &middot; {{ p.type }} &middot;
+      <a href="{{ p.bron }}" rel="noopener" target="_blank">bron</a> &middot;
+      <a href="/candidates/{{ c.id }}">details</a></div>
+    <p class="last">{{ p.body }}</p>
+    <div class="meta">niveau: {{ p.niveau|join(', ') }} &middot; thema: {{ p.thema|join(', ') }}
+      &middot; doelgroep: {{ p.doelgroep|join(', ') }} &middot; regio: {{ p.regio|join(', ') }}</div>
+    <div class="meta">LLM: {{ c.reason }}</div>
+    <div class="row" style="margin-top:.5rem">
+      <form method="post" action="/review/{{ c.id }}/publish"><button class="primary">Publiceer</button></form>
+      <form method="post" action="/review/{{ c.id }}/reject"><button>Afwijzen</button></form>
+    </div>
+  </div>
+  {% endfor %}
+{% endblock %}

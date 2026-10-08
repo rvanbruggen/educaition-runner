@@ -1,0 +1,180 @@
+# Bronnen voor de artikelscan (fase 1: Vlaanderen).
+# Endpoints getest op 2026-10-08. Gezondheid en opbrengst per bron: /sources in de UI.
+#
+# kind:    rss | sitemap | html            (zie app/sources.py)
+# gate:    ai+edu | ai | none               trefwoordfilter op titel/samenvatting/URL
+# name:    bronnaam zoals in "Lees meer bij [name](url)."
+# prefix:  begin van de bestandsnaam-slug (zoals de bestaande posts: vrtnws-, veto-, ...)
+
+window_days: 21   # ouder dan dit = niet meer nieuw (Cowork: "~3 weken")
+
+sources:
+  # --- algemene nieuwsmedia: AI én onderwijs vereist ---
+  - id: vrtnws
+    name: VRT NWS
+    prefix: vrtnws
+    kind: rss
+    url: https://www.vrt.be/vrtnws/nl.rss.articles.xml
+    gate: ai+edu
+  - id: knack
+    name: Knack
+    prefix: knack
+    kind: rss
+    url: https://www.knack.be/feed/
+    gate: ai+edu
+  - id: datanews
+    name: Data News
+    prefix: datanews
+    kind: rss
+    url: https://datanews.knack.be/feed/
+    gate: ai+edu
+  - id: trends
+    name: Trends
+    prefix: trends
+    kind: rss
+    url: https://trends.knack.be/feed/
+    gate: ai+edu
+  - id: bruzz
+    name: BRUZZ
+    prefix: bruzz
+    kind: rss
+    url: https://www.bruzz.be/rss.xml
+    gate: ai+edu
+  - id: apache
+    name: Apache
+    prefix: apache
+    kind: html
+    url: https://www.apache.be/
+    link_pattern: '^https://(www\.)?apache\.be/20\d\d/\d\d/\d\d/[a-z0-9-]+'
+    url_date: '/(\d{4})/(\d{2})/(\d{2})/'
+    gate: ai+edu
+  - id: accountancyvandaag
+    name: Accountancy Vandaag
+    prefix: accountancyvandaag
+    kind: rss
+    url: https://www.accountancyvandaag.be/feed/
+    gate: ai+edu
+
+  # --- onderwijsmedia: AI vereist (titels/slugs zijn beschrijvend) ---
+  - id: knack-onderwijs
+    name: Knack
+    prefix: knack
+    kind: rss
+    url: https://www.knack.be/nieuws/belgie/onderwijs/feed/
+    gate: ai
+  - id: veto
+    name: Veto
+    prefix: veto
+    kind: sitemap
+    url: https://www.veto.be/sitemap.xml
+    url_pattern: '^https://www\.veto\.be/(?!cultuur/|sport/|old/)[a-z-]+/[a-z0-9-]+/\d+$'
+    gate: ai
+  - id: vub
+    name: VUB
+    prefix: vub
+    kind: html
+    url: https://www.vub.be/nl/nieuws
+    link_pattern: '^https://www\.vub\.be/nl/nieuws/[a-z0-9-]+$'
+    gate: ai
+  - id: vub-press
+    name: VUB
+    prefix: vub
+    kind: html
+    url: https://press.vub.ac.be/
+    link_pattern: '^https://press\.vub\.ac\.be/[a-z0-9-]{25,}$'
+    gate: ai
+  - id: ugent
+    name: Universiteit Gent
+    prefix: ugent
+    kind: html
+    url: https://www.ugent.be/nl/actueel/persberichten
+    link_pattern: '/nl/actueel/persberichten/[a-z0-9_-]{8,}(\.htm)?$'
+    gate: ai
+  - id: kuleuven
+    name: KU Leuven
+    prefix: kuleuven
+    kind: html
+    url: https://nieuws.kuleuven.be/nl/{year}
+    link_pattern: '^https://nieuws\.kuleuven\.be/nl/{year}/[a-z0-9-]+$'
+    gate: ai
+  - id: mediawijs
+    name: Mediawijs
+    prefix: mediawijs
+    kind: html
+    url: https://www.mediawijs.be/nl/nieuws
+    link_pattern: '^https://www\.mediawijs\.be/nl/artikels/[a-z0-9-]+$'
+    gate: ai
+  - id: scholierenkoepel
+    name: Vlaamse Scholierenkoepel
+    prefix: scholierenkoepel
+    kind: sitemap
+    url: https://www.scholierenkoepel.be/sitemap.xml
+    url_pattern: '/kennisbank/[a-z0-9-]+'   # persberichten en projecten staan in de kennisbank
+    gate: ai
+
+  # --- kleine onderwijsbronnen: alles doorlaten, filter op artikeltekst ---
+  - id: schoolit
+    name: Schoolit
+    prefix: schoolit
+    kind: rss
+    url: https://schoolit.be/feed/
+    gate: none
+  - id: klasse
+    name: Klasse
+    prefix: klasse
+    kind: rss
+    url: https://www.klasse.be/feed/
+    gate: none
+  - id: klascement
+    name: KlasCement
+    prefix: klascement
+    kind: rss
+    url: https://www.klascement.net/rss
+    gate: ai         # vooral lesmateriaal; titels zijn beschrijvend
+  - id: schoolmakers
+    name: Schoolmakers
+    prefix: schoolmakers
+    kind: rss
+    url: https://www.schoolmakers.be/feed/
+    gate: none
+  - id: go
+    name: GO! Pro
+    prefix: go
+    kind: html
+    url: https://pro.g-o.be/nieuws/
+    link_pattern: '^https://pro\.g-o\.be/nieuws/[a-z0-9-]+/?$'
+    gate: none
+  - id: ovsg
+    name: OVSG
+    prefix: ovsg
+    kind: html
+    url: https://www.ovsg.be/nieuws
+    link_pattern: '^https://www\.ovsg\.be/nieuws/[a-z0-9-]+$'
+    gate: none
+  - id: vaia
+    name: VAIA
+    prefix: vaia
+    kind: sitemap
+    url: https://www.vaia.be/sitemap.xml
+    child_pattern: '/nl/'
+    max_children: 20
+    url_pattern: '^https://www\.vaia\.be/nl/(blog|nieuws|opleidingen)/[a-z0-9-]+$'
+    gate: ai+edu     # de meeste opleidingen zijn bedrijfscursussen; onderwijs moet in de slug staan
+
+  # --- nog niet bruikbaar (JavaScript-pagina's of geen feed); handmatig of later ---
+  - id: onderwijs-vlaanderen
+    name: Departement Onderwijs
+    prefix: onderwijsvlaanderen
+    kind: html
+    url: https://onderwijs.vlaanderen.be/nl/nieuws
+    link_pattern: '/nl/nieuws/[a-z0-9-]+'
+    gate: none
+    enabled: false   # lijst wordt met JavaScript geladen
+  - id: kov
+    name: Katholiek Onderwijs Vlaanderen
+    prefix: kov
+    kind: html
+    url: https://www.katholiekonderwijs.vlaanderen/
+    link_pattern: '/nieuws/'
+    gate: none
+    enabled: false   # time-out bij test op 2026-10-08

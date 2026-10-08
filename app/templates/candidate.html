@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Kandidaat {{ c.id }} — EducAItion{% endblock %}
+{% block width %}900px{% endblock %}
+{% block content %}
+  <h1>{{ c.title or c.raw_url }}</h1>
+  <div class="card scroll">
+  <table>
+    <tr><th>Status</th><td>{{ c.status }} — {{ statuses.get(c.status, '') }}</td></tr>
+    <tr><th>Reden</th><td>{{ c.reason or '—' }}</td></tr>
+    <tr><th>Bron</th><td>{{ c.source }}</td></tr>
+    <tr><th>URL</th><td><a href="{{ c.raw_url }}" rel="noopener" target="_blank">{{ c.raw_url }}</a></td></tr>
+    <tr><th>Gepubliceerd</th><td>{{ c.published or '—' }}</td></tr>
+    <tr><th>Eerst gezien</th><td>{{ c.first_seen }} UTC</td></tr>
+    <tr><th>Bijgewerkt</th><td>{{ c.updated }} UTC</td></tr>
+    {% if c.data.classify_model %}<tr><th>Modellen</th><td>{{ c.data.classify_model }} / {{ c.data.write_model or '—' }}</td></tr>{% endif %}
+    {% if c.data.post_path %}<tr><th>Post</th><td>{{ c.data.post_path }} ({{ c.data.commit[:7] }})</td></tr>{% endif %}
+  </table>
+  </div>
+  {% if c.status == 'ready' %}
+  <div class="row">
+    <form method="post" action="/review/{{ c.id }}/publish"><button class="primary">Publiceer</button></form>
+    <form method="post" action="/review/{{ c.id }}/reject"><button>Afwijzen</button></form>
+  </div>
+  {% endif %}
+  {% if markdown %}<h2>Post zoals hij gepubliceerd wordt</h2><pre>{{ markdown }}</pre>{% endif %}
+  {% if c.data.problems %}<h2>Validatieproblemen</h2><pre>{{ c.data.problems|join('\n') }}</pre>{% endif %}
+  {% if c.data.classification %}<h2>Classificatie</h2><pre>{{ c.data.classification|tojson(indent=2) }}</pre>{% endif %}
+  {% if c.feed_summary %}<h2>Samenvatting uit de feed</h2><pre>{{ c.feed_summary }}</pre>{% endif %}
+{% endblock %}

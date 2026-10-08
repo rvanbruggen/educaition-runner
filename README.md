@@ -1,66 +1,70 @@
 # educaition-runner
 
-Zelfstandige Docker-runner voor de geplande Claude-taken van [educaition.today](https://www.educaition.today) — het EducAItion-equivalent van de Positron-admin, maar gebouwd rond agent-runs (websearch + schrijven) in plaats van RSS-feeds.
+Zelfstandige Docker-runner voor de geplande taken van [educaition.today](https://www.educaition.today) — het EducAItion-equivalent van de Positron-admin, maar met website-scraping als invoer in plaats van alleen RSS. Het plan en de fasering staan in [PLAN.md](PLAN.md).
 
-Eén container bevat drie dingen: een scheduler (APScheduler, cron-tijden in Europe/Brussels), een agent-uitvoerder (Claude Agent SDK, headless met API-key) en een webinterface op poort 8080 (status, run-historiek, transcripts, "Run nu", pauzeren, kosten per maand).
+Eén container bevat een scheduler (APScheduler, cron-tijden in Europe/Brussels), de pipelines en een webinterface op poort 8080.
 
 ## Architectuur
 
 ```
-docker-compose (1 container, restart: unless-stopped)
+docker-compose (1 container, restart: unless-stopped, volume ./data)
 └── FastAPI app (poort 8080)
     ├── APScheduler ── cron per taak (tasks/tasks.yml)
-    ├── runner.py ──── per run:
-    │     1. git clone/reset van rvanbruggen/educaition naar /data/repo
-    │     2. Claude Agent SDK draait de taakprompt (tasks/*.md) in die checkout
-    │     3. agent schrijft /data/report.json; runner slaat resultaat + kosten op in SQLite
-    └── web UI ─────── dashboard, rundetails, transcripts (volume ./data)
+    ├── bronnen-verzamelen (elke 2 uur, geen LLM)
+    │     tasks/sources.yml → rss | sitemap | html → trefwoordfilter → tabel candidates
+    │     (genormaliseerde URL = sleutel: elke URL wordt maar één keer bekeken)
+    ├── artikelen-vlaanderen (dagelijks 05:08)
+    │     ontdubbelen tegen _posts → pagina ophalen (trafilatura) → datumvenster
+    │     → LLM "classify" (relevant? tags uit _data/tags.yml, zelfde nieuws als een post?)
+    │     → LLM "write" (titel + 2-4 zinnen) → post renderen + valideren in code
+    │     → shadow: wachtrij /review   ·   auto: commit + push (max. 6 per run)
+    ├── agent (v1)      Claude Agent SDK op tasks/*.md — voor de taken zonder pipeline, nu mode: off
+    └── web UI          dashboard · review · kandidaten · bronnen · vergelijking · instellingen
 ```
 
-De vier taken zijn 1-op-1 overgenomen van de Cowork scheduled tasks (zelfde bronnen, regels, validatie en tijdstippen); alleen de omgevingsstappen verschillen (repo staat al klaar, rapport via JSON-bestand i.p.v. artifact).
+Het LLM schrijft nooit bestanden en voert geen git-commando's uit: het geeft enkel JSON terug. De code bouwt de front matter, controleert tags, links en de excerpt-regel, draait `scripts/genereer-tagpaginas.py` en commit/pusht.
 
-## Deployment op de MacBook Air
+## Deployment (Docker-host, naast Positron)
 
-Vereisten: Docker (zoals voor Positron), een Anthropic API-key (console.anthropic.com) en een GitHub-token met schrijftoegang tot `rvanbruggen/educaition` (fine-grained PAT, alleen dat repo, permissie "Contents: read and write").
+Vereisten: Docker, een OpenAI API-key (platform.openai.com) en een GitHub-token met schrijftoegang tot `rvanbruggen/educaition` (fine-grained PAT, alleen dat repo, permissie "Contents: read and write").
 
 ```bash
-# op de Air
-git clone <deze repo> ~/educaition-runner   # of kopieer de map via scp/AirDrop
 cd ~/educaition-runner
-cp .env.example .env && nano .env           # vul ANTHROPIC_API_KEY en GITHUB_TOKEN in
+cp .env.example .env && nano .env           # OPENAI_API_KEY en GITHUB_TOKEN
 docker compose up -d --build
-open http://localhost:8080                   # of vanaf je telefoon: http://<air-naam>.local:8080
 ```
 
-Eerste test: klik "Run nu" bij één taak (bv. de artikelscan) en volg het transcript via de rundetailpagina. Controleer daarna of de commit op GitHub staat en de site gebouwd wordt.
+Daarna open je `http://<host>:8080`. Updaten na een `git push` vanaf je Mac: `~/educaition-runner/deploy.sh` (pull + rebuild, zoals bij Positron).
 
-Zorg dat de Air niet slaapt: System Settings → schakel automatische sluimerstand uit (of `sudo pmset -a sleep 0 disablesleep 1`).
+Eerste test: klik **Run nu** bij "Bronnen verzamelen" en daarna bij "Artikelscan Vlaanderen", en bekijk het resultaat in **Review** en **Kandidaten**.
 
 ### Bereikbaarheid buitenshuis (optioneel)
 
-De UI is standaard alleen op je thuisnetwerk bereikbaar. Wil je hem ook onderweg zien: installeer [Tailscale](https://tailscale.com) op de Air en je telefoon (gratis voor persoonlijk gebruik), en surf naar `http://<tailscale-naam>:8080`. Zet in dat geval ook `ADMIN_PASSWORD` in `.env` (gebruiker: `rik`).
+De UI is standaard alleen op je thuisnetwerk bereikbaar. Wil je hem ook onderweg zien: installeer [Tailscale](https://tailscale.com) op de host en je telefoon, en surf naar `http://<tailscale-naam>:8080`. Zet in dat geval ook `ADMIN_PASSWORD` in `.env` (gebruiker: `rik`).
 
-## Cutover-plan (van Cowork naar de runner)
+## Fase 1: schaduwmodus
 
-1. Draai de runner een paar dagen parallel: laat de dagelijkse artikelscan hier draaien maar **pauzeer hem eerst in Cowork**, anders scant alles dubbel. De veiligheidsgordel: beide varianten dedupliceren op bron-URL, dus een overlap-dag is geen ramp.
-2. Vergelijk een week lang de output (kwaliteit, kosten in het dashboard).
-3. Tevreden? Schakel in de Claude-app de vier geplande taken uit (educaition-artikelen-vlaanderen, educaition-digest-vlaanderen, educaition-digest-internationaal, educaition-faq-discussie-onderhoud). Het artifact-dashboard mag blijven bestaan maar wordt niet meer bijgewerkt; de web-UI van de runner vervangt het.
-4. De map `claude-dashboard/` in het site-repo mag daarna weg (staat in .gitignore, dus alleen lokaal).
+De artikelscan staat op `mode: shadow`: hij draait elke ochtend, maar zet niets online. Cowork blijft intussen de echte artikels publiceren.
 
-## Kosten
+- **Review**: wat de runner zou publiceren. Je kunt hier een artikel publiceren dat Cowork miste, of afwijzen.
+- **Vergelijking**: elk artikel dat Cowork op de site zette, en wat de runner met dezelfde URL deed ("niet gezien" = bron ontbreekt of de feed was al doorgeschoven).
+- **Bronnen**: per bron of hij werkt en wat hij oplevert.
 
-Elke run betaalt API-verbruik; het dashboard toont kosten per run en per maand. Model instelbaar via `CLAUDE_MODEL` in `.env` (standaard claude-sonnet-5; goedkoper kan met haiku, maar de schrijfkwaliteit van de digests gaat er dan op achteruit). `max_turns` per taak in `tasks/tasks.yml` is de kostenrem. Verwacht ruwweg: dagelijkse scan ~30 runs/maand plus 3 zondagsruns/week — hou de eerste maand het dashboard in de gaten en stel bij.
+Na ongeveer twee weken: als de runner minstens vindt wat Cowork vond, zet je in `tasks/tasks.yml` `mode: auto` bij `artikelen-vlaanderen` en schakel je de Cowork-taak `educaition-artikelen-vlaanderen` uit.
+
+## Modellen en kosten
+
+Elke stap (`classify`, `write`, `digest`) heeft een eigen model in de vorm `provider:model`, standaard `openai:gpt-6-luna`. Wijzigen via **Instellingen** (meteen actief, wordt bewaard in de databank) of via `LLM_*` in `.env` als standaardwaarde. Ondersteunde providers: `openai` en `anthropic` (dan is `ANTHROPIC_API_KEY` nodig). De kosten per run staan op het dashboard; de prijstabel staat in `app/llm.py`.
 
 ## Beheer
 
-- Prompt aanpassen: bewerk `tasks/*.md`, daarna `docker compose restart`.
-- Tijdstip aanpassen: `tasks/tasks.yml`, daarna `docker compose restart`.
-- Logs: `docker compose logs -f` (app) en de transcripts in `./data/logs/`.
-- Databank met run-historiek: `./data/runner.db` (SQLite).
-- Updaten na wijzigingen: `docker compose up -d --build`.
+- Bron toevoegen of aanpassen: `tasks/sources.yml`, daarna `docker compose restart`.
+- Tijdstip of modus aanpassen: `tasks/tasks.yml`, daarna `docker compose restart`.
+- Logs: `docker compose logs -f` en de transcripts in `./data/logs/` (ook via elke rundetailpagina).
+- Databank (runs, kandidaten, bronstatus, instellingen): `./data/runner.db` (SQLite).
 
 ## Veiligheid
 
-- `.env` bevat de API-key en het GitHub-token en staat in .gitignore — nooit committen.
-- Het GitHub-token heeft alleen toegang tot het educaition-repo.
-- De agent draait met `bypassPermissions`, maar binnen een container die niets anders bevat dan de repo-checkout; de prompts verbieden expliciet het printen van de remote-URL (bevat het token).
+- `.env` bevat de API-keys en het GitHub-token en staat in .gitignore — nooit committen.
+- Het GitHub-token heeft alleen toegang tot het educaition-repo; foutmeldingen van git worden ontdaan van het token voor ze gelogd worden.
+- De v1-agenttaken draaien met `bypassPermissions` binnen de container; ze staan op `mode: off` zolang Cowork ze uitvoert.

@@ -1,6 +1,6 @@
 FROM python:3.12-slim-bookworm
 
-# git + node (Agent SDK requires Node.js; arm64-native for the MacBook Air)
+# git + node (node only for the v1 agent tasks via the Claude Agent SDK)
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git curl ca-certificates tzdata \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
@@ -9,17 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN npm install -g @anthropic-ai/claude-code
 
-RUN pip install --no-cache-dir \
-      claude-agent-sdk \
-      fastapi \
-      "uvicorn[standard]" \
-      apscheduler \
-      jinja2 \
-      pyyaml
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Claude config/home live on the persistent volume
 ENV HOME=/data/home
 ENV CLAUDE_CONFIG_DIR=/data/home/.claude
+ENV DATA_DIR=/data
+ENV TASKS_DIR=/tasks
 
 WORKDIR /app
 COPY app/ /app/

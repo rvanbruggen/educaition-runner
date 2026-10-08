@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Kandidaten — EducAItion{% endblock %}
+{% block width %}1000px{% endblock %}
+{% block content %}
+  <h1>Kandidaten</h1>
+  <div class="sub">Elke URL die een bron ooit aanbood, met wat de pipeline ermee deed.</div>
+  <div class="card chips">
+    <a href="/candidates" {% if not status %}style="font-weight:600"{% endif %}>alle</a>
+    {% for s, label in statuses.items() %}{% if counts.get(s) %}
+    <a href="/candidates?status={{ s }}{% if source %}&source={{ source }}{% endif %}" title="{{ label }}"
+       {% if status == s %}style="font-weight:600"{% endif %}>{{ s }} ({{ counts[s] }})</a>
+    {% endif %}{% endfor %}
+    {% if source %}<span class="meta">&middot; bron: {{ source }} (<a href="/candidates{% if status %}?status={{ status }}{% endif %}">wis</a>)</span>{% endif %}
+  </div>
+  <div class="card scroll">
+  <table>
+    <tr><th>Status</th><th>Bron</th><th>Datum</th><th>Titel / reden</th></tr>
+    {% for c in items %}
+    <tr>
+      <td><a href="/candidates/{{ c.id }}">{{ c.status }}</a></td>
+      <td><a href="/candidates?source={{ c.source }}">{{ c.source }}</a></td>
+      <td>{{ c.published or '—' }}</td>
+      <td><a href="{{ c.raw_url }}" rel="noopener" target="_blank">{{ c.title or c.raw_url }}</a>
+        {% if c.reason %}<div class="meta">{{ c.reason }}</div>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if not items %}<span class="meta">Geen kandidaten.</span>{% endif %}
+  </div>
+{% endblock %}

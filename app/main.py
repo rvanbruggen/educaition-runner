@@ -1,40 +1,57 @@
 """EducAItion Taakbeheer — scheduler + web UI in one FastAPI app."""
+import base64
 import logging
 import os
+import re
 import secrets
 import threading
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import date, datetime, timedelta, timezone
+from urllib.parse import quote, urlsplit
 
 import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 import db
+import llm
+import repo
 import runner
+import sources
+import vocab
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("main")
 
-TASKS: dict = yaml.safe_load((Path("/tasks") / "tasks.yml").read_text(encoding="utf-8"))["tasks"]
+TASKS: dict = yaml.safe_load((runner.TASKS_DIR / "tasks.yml").read_text(encoding="utf-8"))["tasks"]
 TZ = os.environ.get("TZ", "Europe/Brussels")
+ARTICLE_TASK = next((k for k, v in TASKS.items() if v.get("kind") == "articles"), None)
 
 app = FastAPI(title="EducAItion Taakbeheer")
-jinja = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"),
+jinja = Environment(loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), "templates")),
                     autoescape=select_autoescape(["html"]))
 
 scheduler = BackgroundScheduler(timezone=TZ)
+
+
+def render(template: str, request: Request | None = None, **ctx) -> HTMLResponse:
+    ctx.setdefault("review_count", db.status_counts().get("ready", 0))
+    if request is not None:
+        ctx.setdefault("flash", request.query_params.get("msg", ""))
+    return HTMLResponse(jinja.get_template(template).render(**ctx))
+
+
+def back(path: str, msg: str = "") -> RedirectResponse:
+    return RedirectResponse(path + (f"?msg={quote(msg)}" if msg else ""), status_code=303)
 
 
 # ---------- auth (optional HTTP Basic) ----------
 @app.middleware("http")
 async def basic_auth(request: Request, call_next):
     password = os.environ.get("ADMIN_PASSWORD", "")
-    if password:
-        import base64
+    if password and request.url.path != "/health":
         header = request.headers.get("authorization", "")
         ok = False
         if header.startswith("Basic "):
@@ -44,7 +61,6 @@ async def basic_auth(request: Request, call_next):
             except Exception:  # noqa: BLE001
                 ok = False
         if not ok:
-            from fastapi.responses import Response
             return Response(status_code=401,
                             headers={"WWW-Authenticate": 'Basic realm="EducAItion"'})
     return await call_next(request)
@@ -58,6 +74,7 @@ def _job(task_id: str):
 @app.on_event("startup")
 def startup():
     db.init()
+    db.mark_stale_runs()
     for task_id, cfg in TASKS.items():
         scheduler.add_job(_job, CronTrigger.from_crontab(cfg["cron"], timezone=TZ),
                           args=[task_id], id=task_id, max_instances=1,
@@ -78,37 +95,43 @@ def _task_view():
     for task_id, cfg in TASKS.items():
         last = db.last_run(task_id)
         enabled = db.is_enabled(task_id)
+        mode = cfg.get("mode", "auto")
         overdue = False
-        if last and last["finished"] and enabled:
+        if last and last["finished"] and enabled and mode != "off":
             hours = (now - datetime.strptime(last["started"], "%Y-%m-%dT%H:%M:%SZ")
                      .replace(tzinfo=timezone.utc)).total_seconds() / 3600
             overdue = hours > cfg["interval_hours"] + cfg["grace_hours"]
         job = scheduler.get_job(task_id)
+        next_run = "—"
+        if mode != "off" and job and job.next_run_time:
+            next_run = job.next_run_time.strftime("%a %d %b %H:%M")
         out.append({
             "id": task_id, "name": cfg["name"], "schedule": cfg["schedule_label"],
-            "enabled": enabled, "last": last, "overdue": overdue,
+            "enabled": enabled, "last": last, "overdue": overdue, "mode": mode,
             "running": bool(last and last["status"] == "running"),
-            "next_run": job.next_run_time.strftime("%a %d %b %H:%M") if job and job.next_run_time else "—",
+            "next_run": next_run,
         })
     return out
 
 
-# ---------- routes ----------
+# ---------- routes: tasks ----------
 @app.get("/", response_class=HTMLResponse)
-def dashboard():
-    return jinja.get_template("dashboard.html").render(
-        tasks=_task_view(), runs=db.recent_runs(30),
-        month_cost=db.month_cost(), task_names={k: v["name"] for k, v in TASKS.items()})
+def dashboard(request: Request):
+    return render("dashboard.html", request, active="dash",
+                  tasks=_task_view(), runs=db.recent_runs(30),
+                  month_cost=db.month_cost(), task_names={k: v["name"] for k, v in TASKS.items()})
 
 
 @app.post("/run/{task_id}")
 def run_now(task_id: str):
     if task_id not in TASKS:
         raise HTTPException(404)
+    if TASKS[task_id].get("mode") == "off":
+        return back("/", "Deze taak staat op mode=off (draait nog in Cowork).")
     threading.Thread(target=runner.execute_task,
                      args=(task_id, TASKS[task_id]), kwargs={"trigger": "manual"},
                      daemon=True).start()
-    return RedirectResponse("/", status_code=303)
+    return back("/")
 
 
 @app.post("/toggle/{task_id}")
@@ -116,11 +139,11 @@ def toggle(task_id: str):
     if task_id not in TASKS:
         raise HTTPException(404)
     db.set_enabled(task_id, not db.is_enabled(task_id))
-    return RedirectResponse("/", status_code=303)
+    return back("/")
 
 
 @app.get("/runs/{run_id}", response_class=HTMLResponse)
-def run_detail(run_id: int):
+def run_detail(request: Request, run_id: int):
     run = db.get_run(run_id)
     if not run:
         raise HTTPException(404)
@@ -128,9 +151,135 @@ def run_detail(run_id: int):
     path = runner.LOG_DIR / f"{run_id}-{run['task']}.log"
     if path.exists():
         transcript = path.read_text(encoding="utf-8", errors="replace")[-40000:]
-    return jinja.get_template("run.html").render(
-        run=run, transcript=transcript,
-        task_name=TASKS.get(run["task"], {}).get("name", run["task"]))
+    return render("run.html", request, run=run, transcript=transcript,
+                  task_name=TASKS.get(run["task"], {}).get("name", run["task"]))
+
+
+# ---------- routes: review queue ----------
+@app.get("/review", response_class=HTMLResponse)
+def review(request: Request):
+    mode = TASKS.get(ARTICLE_TASK, {}).get("mode", "shadow")
+    return render("review.html", request, active="review", mode=mode,
+                  items=db.candidates_by_status("ready", 200, oldest_first=True))
+
+
+@app.post("/review/{cid}/publish")
+def review_publish(cid: int):
+    ok, msg = runner.publish_reviewed([cid], ARTICLE_TASK or "artikelen-vlaanderen")
+    return back("/review", msg)
+
+
+@app.post("/review/{cid}/reject")
+def review_reject(cid: int):
+    c = db.get_candidate(cid)
+    if not c:
+        raise HTTPException(404)
+    if c["status"] == "ready":
+        db.update_candidate(cid, status="rejected", reason="afgewezen in review")
+    return back("/review", "Afgewezen.")
+
+
+# ---------- routes: candidates & sources ----------
+@app.get("/candidates", response_class=HTMLResponse)
+def candidates(request: Request, status: str = "", source: str = ""):
+    return render("candidates.html", request, active="cand", status=status, source=source,
+                  statuses=db.STATUSES, counts=db.status_counts(),
+                  items=db.candidates_list(status or None, source or None, 300))
+
+
+@app.get("/candidates/{cid}", response_class=HTMLResponse)
+def candidate(request: Request, cid: int):
+    c = db.get_candidate(cid)
+    if not c:
+        raise HTTPException(404)
+    markdown = repo.render_article(c["data"]["post"]) if c["data"].get("post") else ""
+    return render("candidate.html", request, active="cand", c=c, markdown=markdown,
+                  statuses=db.STATUSES)
+
+
+@app.get("/sources", response_class=HTMLResponse)
+def sources_page(request: Request):
+    cfg = sources.load_config()
+    states = db.all_source_states()
+    yields = db.source_yield()
+    rows = []
+    for s in cfg["sources"]:
+        st = states.get(s["id"], {})
+        y = yields.get(s["id"], {})
+        rows.append({
+            "id": s["id"], "kind": s["kind"], "gate": s.get("gate", "none"),
+            "enabled": s.get("enabled", True),
+            "last_ok": st.get("last_ok", ""), "error": st.get("last_error", ""),
+            "last_count": st.get("last_count", 0),
+            "total": sum(n for k, n in y.items() if k not in ("baseline", "gated")),
+            "relevant": sum(y.get(k, 0) for k in ("ready", "published", "rejected")),
+            "published": y.get("published", 0),
+        })
+    return render("sources.html", request, active="src", rows=rows)
+
+
+@app.get("/compare", response_class=HTMLResponse)
+def compare(request: Request, since: str = ""):
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", since or ""):
+        since = db.first_run_date() or (date.today() - timedelta(days=14)).isoformat()
+    site_rows, found = [], 0
+    domains = {urlsplit(s["url"]).netloc.removeprefix("www.")
+               for s in sources.load_config()["sources"]}
+    if (repo.REPO_DIR / ".git").exists():
+        out = repo.git("log", f"--since={since}", "--diff-filter=A", "--name-only",
+                       "--pretty=format:", "--", "_posts", check=False).stdout
+        files = sorted({f for f in out.splitlines() if f.endswith(".md")}, reverse=True)
+        posts = []
+        for f in files:
+            p = repo.REPO_DIR / f
+            if not p.exists():
+                continue
+            text = p.read_text(encoding="utf-8")
+            t = re.search(r"^type:\s*(\S+)", text, re.M)
+            b = re.search(r"^bron:\s*[\"']?(\S+?)[\"']?\s*$", text, re.M)
+            if not t or t.group(1) not in vocab.ARTICLE_TYPES or not b:
+                continue  # digests, media and academic posts belong to other tasks
+            posts.append((f.removeprefix("_posts/"), b.group(1)))
+        cands = db.candidates_by_urls([vocab.normalise_url(b) for _, b in posts])
+        for f, bron in posts:
+            cand = cands.get(vocab.normalise_url(bron))
+            domain = urlsplit(bron).netloc.removeprefix("www.")
+            found += 1 if cand else 0
+            site_rows.append({"file": f, "bron": bron, "domain": domain, "cand": cand,
+                              "known_domain": any(domain.endswith(d) or d.endswith(domain)
+                                                  for d in domains)})
+    # What the runner published itself shows up in site_rows; this is what it has
+    # that the site does not (yet).
+    site_urls = {vocab.normalise_url(r["bron"]) for r in site_rows}
+    runner_only = [c for st in ("ready", "rejected") for c in db.candidates_by_status(st, 300)
+                   if c["url"] not in site_urls and c["updated"][:10] >= since]
+    return render("compare.html", request, active="cmp", since=since, site_rows=site_rows,
+                  found=found, runner_only=runner_only)
+
+
+# ---------- routes: settings ----------
+@app.get("/settings", response_class=HTMLResponse)
+def settings(request: Request):
+    specs = {s: ":".join(llm.get_spec(s)) for s in llm.STEPS}
+    keys = {s: bool(os.environ.get("OPENAI_API_KEY" if llm.get_spec(s)[0] == "openai"
+                                   else "ANTHROPIC_API_KEY")) for s in llm.STEPS}
+    return render("settings.html", request, active="set", steps=llm.STEPS, specs=specs,
+                  keys=keys, prices=llm.PRICES)
+
+
+@app.post("/settings")
+async def settings_save(request: Request):
+    form = await request.form()
+    bad = []
+    for step in llm.STEPS:
+        spec = str(form.get(step, "")).strip()
+        provider, _, model = spec.partition(":")
+        if provider in llm.PROVIDERS and re.match(r"^[A-Za-z0-9._-]+$", model or ""):
+            db.set_setting(f"llm_{step}", spec)
+        else:
+            bad.append(step)
+    msg = "Bewaard." if not bad else f"Ongeldig formaat voor: {', '.join(bad)} (gebruik provider:model)."
+    return back("/settings", msg)
 
 
 @app.get("/health", response_class=PlainTextResponse)

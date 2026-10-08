@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Instellingen — EducAItion{% endblock %}
+{% block content %}
+  <h1>Instellingen</h1>
+  <div class="sub">Model per stap, als <code>provider:model</code>. Wijzigingen gelden vanaf de
+    volgende LLM-call; geen herstart nodig. Voorbeelden: <code>openai:gpt-6-luna</code>,
+    <code>openai:gpt-6.1-sol</code>, <code>anthropic:claude-sonnet-5</code>.</div>
+  <form method="post" action="/settings">
+  <div class="card">
+    {% for step, label in steps.items() %}
+    <div style="margin-bottom:.8rem">
+      <label for="{{ step }}"><strong>{{ step }}</strong> <span class="meta">— {{ label }}</span></label><br>
+      <input type="text" id="{{ step }}" name="{{ step }}" value="{{ specs[step] }}" size="34">
+      {% if keys[step] %}<span class="meta">sleutel aanwezig</span>{% else %}<span class="meta" style="color:var(--err)">API-sleutel ontbreekt in .env</span>{% endif %}
+    </div>
+    {% endfor %}
+    <button class="primary">Bewaar</button>
+  </div>
+  </form>
+  <h2>Prijzen (USD per 1M tokens, voor de kostenkolom)</h2>
+  <div class="card scroll"><table>
+    <tr><th>Model</th><th class="num">Input</th><th class="num">Output</th></tr>
+    {% for m, (pin, pout) in prices.items() %}
+    <tr><td>{{ m }}</td><td class="num">{{ pin }}</td><td class="num">{{ pout }}</td></tr>
+    {% endfor %}
+  </table><div class="meta">Aan te passen in app/llm.py (PRICES); controleer de prijspagina's van de providers.</div></div>
+{% endblock %}

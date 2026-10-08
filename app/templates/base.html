@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}EducAItion Taakbeheer{% endblock %}</title>
+<style>
+  :root{--bg:#f6f5f1;--card:#fff;--text:#1f2933;--muted:#6b7280;--line:#e5e3dc;
+    --ok:#1a7f4b;--ok-bg:#e3f3ea;--warn:#a05a00;--warn-bg:#fdf0dc;
+    --err:#b3261e;--err-bg:#fbe7e6;--late:#5b5f66;--late-bg:#ececec;--accent:#0f4c81;}
+  @media (prefers-color-scheme: dark){:root{--bg:#15171a;--card:#1f2226;--text:#e8e6e1;
+    --muted:#9aa0a6;--line:#33373d;--ok:#5dc389;--ok-bg:#173226;--warn:#e0a458;--warn-bg:#33270f;
+    --err:#e5756e;--err-bg:#361715;--late:#a0a4ab;--late-bg:#26292d;--accent:#7fb2e5;}}
+  *{box-sizing:border-box} body{background:var(--bg);color:var(--text);
+    font:16px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;margin:0;padding:1.25rem 1rem;}
+  main{max-width:{% block width %}760px{% endblock %};margin:0 auto;} h1{font-size:1.35rem;margin:0 0 .2rem;}
+  nav{display:flex;flex-wrap:wrap;gap:.25rem .9rem;font-size:.85rem;margin-bottom:1rem;
+    padding-bottom:.6rem;border-bottom:1px solid var(--line);}
+  nav a.on{font-weight:600;color:var(--text);}
+  .sub{color:var(--muted);font-size:.85rem;margin-bottom:1.25rem;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:.9rem 1rem;margin-bottom:.75rem;}
+  .row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;}
+  .tname{font-weight:600;flex:1 1 auto;}
+  .badge{font-size:.72rem;font-weight:600;padding:.15rem .55rem;border-radius:999px;white-space:nowrap;}
+  .b-ok{color:var(--ok);background:var(--ok-bg);} .b-warn{color:var(--warn);background:var(--warn-bg);}
+  .b-err{color:var(--err);background:var(--err-bg);} .b-late{color:var(--late);background:var(--late-bg);}
+  .meta{color:var(--muted);font-size:.8rem;margin-top:.15rem;}
+  .last{font-size:.88rem;margin-top:.45rem;}
+  h2{font-size:1rem;margin:1.5rem 0 .6rem;}
+  .run{border-top:1px solid var(--line);padding:.55rem 0;font-size:.85rem;}
+  .run:first-of-type{border-top:none;}
+  .when{color:var(--muted);font-size:.78rem;}
+  .dot{display:inline-block;width:.55rem;height:.55rem;border-radius:50%;margin-right:.35rem;}
+  .d-ok{background:var(--ok);} .d-warn{background:var(--warn);} .d-err{background:var(--err);}
+  .d-running{background:var(--accent);}
+  .commit{font-family:ui-monospace,monospace;font-size:.75rem;color:var(--accent);}
+  button{font:inherit;font-size:.78rem;padding:.3rem .7rem;border-radius:8px;
+    border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;}
+  button:hover{border-color:var(--accent);} button:disabled{opacity:.45;cursor:default;}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);}
+  form{display:inline;margin:0;}
+  a{color:var(--accent);text-decoration:none;} a:hover{text-decoration:underline;}
+  table{width:100%;border-collapse:collapse;font-size:.82rem;}
+  th,td{text-align:left;padding:.4rem .5rem;border-top:1px solid var(--line);vertical-align:top;}
+  th{color:var(--muted);font-weight:600;border-top:none;}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .scroll{overflow-x:auto;}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:1rem;font-size:.75rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word;}
+  .flash{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:.6rem .9rem;
+    margin-bottom:1rem;font-size:.88rem;}
+  .chips a{font-size:.78rem;margin-right:.6rem;white-space:nowrap;}
+  input[type=text],select{font:inherit;font-size:.85rem;padding:.3rem .5rem;border-radius:8px;
+    border:1px solid var(--line);background:var(--card);color:var(--text);max-width:100%;}
+  footer{color:var(--muted);font-size:.75rem;margin-top:2rem;}
+</style>
+</head>
+<body>
+<main>
+  <nav>
+    {% set here = active|default('') %}
+    <a href="/" class="{{ 'on' if here=='dash' }}">Dashboard</a>
+    <a href="/review" class="{{ 'on' if here=='review' }}">Review{% if review_count %} ({{ review_count }}){% endif %}</a>
+    <a href="/candidates" class="{{ 'on' if here=='cand' }}">Kandidaten</a>
+    <a href="/sources" class="{{ 'on' if here=='src' }}">Bronnen</a>
+    <a href="/compare" class="{{ 'on' if here=='cmp' }}">Vergelijking</a>
+    <a href="/settings" class="{{ 'on' if here=='set' }}">Instellingen</a>
+  </nav>
+  {% if flash %}<div class="flash">{{ flash }}</div>{% endif %}
+  {% block content %}{% endblock %}
+  <footer>educaition-runner &middot; draait in Docker &middot; tijden in UTC tenzij anders vermeld</footer>
+</main>
+</body>
+</html>

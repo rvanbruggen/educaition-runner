@@ -1,19 +1,35 @@
 # Geplande taken voor educaition.today
-# cron: standaard 5-velden cron, geïnterpreteerd in TZ (Europe/Brussels)
-# max_turns: bovengrens op agent-iteraties (kostenrem)
+# cron:  standaard 5-velden cron, geïnterpreteerd in TZ (Europe/Brussels)
+# kind:  collect | articles | agent        (zie app/runner.py)
+# mode:  off     — geplande runs worden overgeslagen (taak draait nog in Cowork)
+#        shadow  — pipeline draait, maar publiceert niet: resultaat naar /review
+#        auto    — publiceert zelf zodra de validatie slaagt
+# max_turns: bovengrens op agent-iteraties (alleen kind: agent)
 
 tasks:
+  bronnen-verzamelen:
+    name: "Bronnen verzamelen"
+    kind: collect
+    mode: auto
+    cron: "15 */2 * * *"
+    schedule_label: "elke 2 uur (:15)"   # de VRT-feed overspant soms maar ~5 uur
+    interval_hours: 2
+    grace_hours: 4
+
   artikelen-vlaanderen:
     name: "Artikelscan Vlaanderen"
-    prompt: artikelen-vlaanderen.md
+    kind: articles
+    mode: shadow          # fase 1: naast Cowork; na de vergelijking → auto
     cron: "8 5 * * *"
     schedule_label: "dagelijks om 05:08"
     interval_hours: 24
     grace_hours: 8
-    max_turns: 150
 
+  # --- v1-agenttaken: draaien nog in Cowork; worden in fase 2-4 pipelines ---
   digest-vlaanderen:
     name: "Samengevat (Vlaanderen)"
+    kind: agent
+    mode: off
     prompt: digest-vlaanderen.md
     cron: "7 18 * * 0"
     schedule_label: "zondag om 18:07"
@@ -23,6 +39,8 @@ tasks:
 
   digest-internationaal:
     name: "Internationaal samengevat"
+    kind: agent
+    mode: off
     prompt: digest-internationaal.md
     cron: "30 18 * * 0"
     schedule_label: "zondag om 18:30"
@@ -32,6 +50,8 @@ tasks:
 
   faq-discussie-onderhoud:
     name: "FAQ & Ter discussie onderhoud"
+    kind: agent
+    mode: off
     prompt: faq-discussie-onderhoud.md
     cron: "20 19 * * 0"
     schedule_label: "zondag om 19:20"

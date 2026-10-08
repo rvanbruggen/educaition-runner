@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Vergelijking — EducAItion{% endblock %}
+{% block width %}1000px{% endblock %}
+{% block content %}
+  <h1>Vergelijking met Cowork</h1>
+  <div class="sub">Artikels die sinds {{ since }} aan de site werden toegevoegd (door Cowork of
+    handmatig), en wat de runner met dezelfde URL deed. Doel fase 1: de runner vindt minstens wat
+    Cowork vond. <form method="get" action="/compare" style="margin-left:.4rem">
+      <input type="text" name="since" value="{{ since }}" size="10"> <button>Toon</button></form></div>
+
+  <h2>Op de site gezet ({{ site_rows|length }}) — runner vond er {{ found }}</h2>
+  <div class="card scroll">
+  <table>
+    <tr><th>Post</th><th>Bron-URL</th><th>Runner</th></tr>
+    {% for r in site_rows %}
+    <tr>
+      <td>{{ r.file }}</td>
+      <td><a href="{{ r.bron }}" rel="noopener" target="_blank">{{ r.domain }}</a></td>
+      <td>{% if r.cand %}<a href="/candidates/{{ r.cand.id }}">{{ r.cand.status }}</a>
+          {% if r.cand.reason %}<div class="meta">{{ r.cand.reason }}</div>{% endif %}
+        {% else %}<span class="badge b-err">niet gezien</span>
+          <div class="meta">{{ 'bron staat in sources.yml' if r.known_domain else 'domein niet in sources.yml' }}</div>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if not site_rows %}<span class="meta">Nog geen artikels toegevoegd sinds {{ since }}.</span>{% endif %}
+  </div>
+
+  <h2>Alleen door de runner gevonden ({{ runner_only|length }})</h2>
+  <div class="card scroll">
+  <table>
+    <tr><th>Status</th><th>Bron</th><th>Titel</th></tr>
+    {% for c in runner_only %}
+    <tr><td><a href="/candidates/{{ c.id }}">{{ c.status }}</a></td><td>{{ c.source }}</td>
+      <td>{{ c.data.post.title if c.data.post else c.title }}</td></tr>
+    {% endfor %}
+  </table>
+  {% if not runner_only %}<span class="meta">Niets.</span>{% endif %}
+  </div>
+{% endblock %}

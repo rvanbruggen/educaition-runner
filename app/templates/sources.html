@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Bronnen — EducAItion{% endblock %}
+{% block width %}1000px{% endblock %}
+{% block content %}
+  <h1>Bronnen</h1>
+  <div class="sub">Gezondheid en opbrengst per bron (tasks/sources.yml). "Relevant" = klaar,
+    gepubliceerd of afgewezen in review; een bron die maandenlang niets relevants oplevert mag weg.</div>
+  <div class="card scroll">
+  <table>
+    <tr><th>Bron</th><th>Type</th><th>Filter</th><th>Laatste lezing</th>
+      <th class="num">Items</th><th class="num">Kandidaten</th><th class="num">Relevant</th>
+      <th class="num">Gepubliceerd</th></tr>
+    {% for s in rows %}
+    <tr>
+      <td><a href="/candidates?source={{ s.id }}">{{ s.id }}</a>
+        {% if not s.enabled %}<span class="badge b-late">uit</span>{% endif %}
+        {% if s.error %}<div class="meta" style="color:var(--err)">{{ s.error }}</div>{% endif %}</td>
+      <td>{{ s.kind }}</td>
+      <td>{{ s.gate }}</td>
+      <td>{% if s.last_ok %}<span class="when">{{ s.last_ok }}</span>{% else %}—{% endif %}</td>
+      <td class="num">{{ s.last_count }}</td>
+      <td class="num">{{ s.total }}</td>
+      <td class="num">{{ s.relevant }}</td>
+      <td class="num">{{ s.published }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+{% endblock %}

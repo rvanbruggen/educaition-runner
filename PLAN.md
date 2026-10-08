@@ -1,6 +1,6 @@
 # educaition-runner v2: plan
 
-Status: approved 2026-10-08. Phase 0 done; phase 1 next.
+Status: approved 2026-10-08. Phase 0 done. Phase 1 built (collector + article pipeline in shadow mode); waiting for the two-week comparison against Cowork.
 
 ## Decisions (2026-10-08)
 - **Host:** same Docker host as `positron-admin` (`~/educaition-runner` beside `~/positron-today`), deployed with `deploy.sh`.

@@ -1,40 +1,21 @@
-<!doctype html>
-<html lang="nl">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Run {{ run.id }} — {{ task_name }}</title>
-<style>
-  :root{--bg:#f6f5f1;--card:#fff;--text:#1f2933;--muted:#6b7280;--line:#e5e3dc;--accent:#0f4c81;}
-  @media (prefers-color-scheme: dark){:root{--bg:#15171a;--card:#1f2226;--text:#e8e6e1;
-    --muted:#9aa0a6;--line:#33373d;--accent:#7fb2e5;}}
-  body{background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;
-    margin:0;padding:1.25rem;}
-  main{max-width:900px;margin:0 auto;}
-  a{color:var(--accent);} h1{font-size:1.15rem;}
-  dl{display:grid;grid-template-columns:auto 1fr;gap:.2rem .8rem;font-size:.9rem;}
-  dt{color:var(--muted);} dd{margin:0;}
-  pre{background:var(--card);border:1px solid var(--line);border-radius:10px;
-    padding:1rem;font-size:.75rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word;}
-</style>
-</head>
-<body>
-<main>
-  <p><a href="/">&larr; terug naar dashboard</a></p>
+{% extends "base.html" %}
+{% block title %}Run {{ run.id }} — {{ task_name }}{% endblock %}
+{% block width %}900px{% endblock %}
+{% block content %}
   <h1>{{ task_name }} — run #{{ run.id }}</h1>
-  <dl>
-    <dt>Status</dt><dd>{{ run.status }}</dd>
-    <dt>Gestart</dt><dd>{{ run.started }} UTC</dd>
-    <dt>Klaar</dt><dd>{{ run.finished or '—' }} UTC</dd>
-    <dt>Trigger</dt><dd>{{ run.trigger }}</dd>
-    <dt>Samenvatting</dt><dd>{{ run.summary or '—' }}</dd>
-    <dt>Commit</dt><dd>{{ run.commit_hash or '—' }}</dd>
-    <dt>Items</dt><dd>{{ run.items }}</dd>
-    <dt>Kosten</dt><dd>${{ "%.4f"|format(run.cost_usd) }}</dd>
-    {% if run.error %}<dt>Fout</dt><dd>{{ run.error }}</dd>{% endif %}
-  </dl>
+  <div class="card scroll">
+  <table>
+    <tr><th>Status</th><td>{{ run.status }}</td></tr>
+    <tr><th>Gestart</th><td>{{ run.started }} UTC</td></tr>
+    <tr><th>Klaar</th><td>{{ run.finished or '—' }} UTC</td></tr>
+    <tr><th>Trigger</th><td>{{ run.trigger }}</td></tr>
+    <tr><th>Samenvatting</th><td>{{ run.summary or '—' }}</td></tr>
+    <tr><th>Commit</th><td>{{ run.commit_hash or '—' }}</td></tr>
+    <tr><th>Items</th><td>{{ run.items }}</td></tr>
+    <tr><th>Kosten</th><td>${{ "%.4f"|format(run.cost_usd) }}</td></tr>
+    {% if run.error %}<tr><th>Fout</th><td>{{ run.error }}</td></tr>{% endif %}
+  </table>
+  </div>
   <h2>Transcript (laatste 40k tekens)</h2>
   <pre>{{ transcript or 'geen transcript gevonden' }}</pre>
-</main>
-</body>
-</html>
+{% endblock %}
