@@ -61,7 +61,7 @@ Elke stap (`classify`, `write`, `digest`) heeft een eigen model in de vorm `prov
 ## Beheer
 
 - Bron toevoegen of aanpassen: `tasks/sources.yml`, daarna `docker compose restart`.
-- Tijdstip aanpassen: op het dashboard, per taak, in het veld **Schema** (5-velden cron, meteen actief, bewaard in de databank; **Standaard** zet de waarde uit `tasks/tasks.yml` terug). Modus (`off`/`shadow`/`auto`) of de standaardtijd aanpassen: `tasks/tasks.yml`, daarna `docker compose restart`.
+- Tijdstip aanpassen: op het dashboard, per taak, via **Schema aanpassen** (om de zoveel uur / elke dag / op weekdagen, plus tijdstip; onder *Geavanceerd* kan ook een 5-velden cron). Meteen actief, bewaard in de databank; **Terug naar standaard** zet de waarde uit `tasks/tasks.yml` terug. Modus (`off`/`shadow`/`auto`) of de standaardtijd aanpassen: `tasks/tasks.yml`, daarna `docker compose restart`.
 - Logs: `docker compose logs -f` en de transcripts in `./data/logs/` (ook via elke rundetailpagina).
 - Databank (runs, kandidaten, bronstatus, instellingen): `./data/runner.db` (SQLite).
 

@@ -21,13 +21,44 @@
       {% if t.mode != 'off' %}<form method="post" action="/toggle/{{ t.id }}"><button>{{ 'Pauzeer' if t.enabled else 'Hervat' }}</button></form>{% endif %}
     </div>
     <div class="meta">{{ t.schedule }} &middot; volgende run: {{ t.next_run }}</div>
-    <form method="post" action="/schedule/{{ t.id }}" class="row sched">
-      <label for="cron-{{ t.id }}" class="meta">Schema (cron, {{ tz }}):</label>
-      <input type="text" id="cron-{{ t.id }}" name="cron" value="{{ t.cron }}" size="16"
-             pattern="\S+( +\S+){4}" title="minuut uur dag maand weekdag">
-      <button>Bewaar</button>
-      {% if t.cron_custom %}<button name="reset" value="1" title="terug naar {{ t.default_cron }}">Standaard</button>{% endif %}
-    </form>
+    <details class="sched" {% if t.cron_custom %}open{% endif %}>
+      <summary class="meta">Schema aanpassen</summary>
+      <form method="post" action="/schedule/{{ t.id }}" class="picker" data-task="{{ t.id }}">
+        <div class="row">
+          <select name="freq" aria-label="frequentie">
+            <option value="hours" {% if t.picker.freq == 'hours' %}selected{% endif %}>om de zoveel uur</option>
+            <option value="daily" {% if t.picker.freq == 'daily' %}selected{% endif %}>elke dag</option>
+            <option value="weekly" {% if t.picker.freq == 'weekly' %}selected{% endif %}>op weekdagen</option>
+          </select>
+          <span data-for="hours">elke
+            <select name="every" aria-label="interval in uren">
+              {% for n in every_choices %}<option value="{{ n }}" {% if t.picker.every == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+            </select> uur, op minuut
+            <select name="minute" aria-label="minuut">
+              {% for m in range(0, 60, 5) %}<option value="{{ m }}" {% if t.picker.minute == m %}selected{% endif %}>:{{ '%02d'|format(m) }}</option>{% endfor %}
+              {% if t.picker.minute % 5 %}<option value="{{ t.picker.minute }}" selected>:{{ '%02d'|format(t.picker.minute) }}</option>{% endif %}
+            </select></span>
+          <span data-for="daily weekly">om
+            <input type="time" name="time" value="{{ '%02d:%02d'|format(t.picker.hour, t.picker.minute) }}" aria-label="tijdstip"></span>
+          <span class="meta">({{ tz }})</span>
+        </div>
+        <div class="row days" data-for="weekly">
+          {% for key, short in days %}
+          <label><input type="checkbox" name="days" value="{{ key }}" {% if key in t.picker.days %}checked{% endif %}> {{ short }}</label>
+          {% endfor %}
+        </div>
+        <details class="adv" {% if not t.picker_ok %}open{% endif %}>
+          <summary class="meta">Geavanceerd: cron rechtstreeks</summary>
+          <input type="text" name="cron" value="{{ t.cron if not t.picker_ok else '' }}" size="16"
+                 placeholder="{{ t.cron }}" pattern="\S+( +\S+){4}" title="minuut uur dag maand weekdag">
+          <span class="meta">Ingevuld? Dan telt dit en niet de keuzes hierboven.</span>
+        </details>
+        <div class="row">
+          <button class="primary">Bewaar schema</button>
+          {% if t.cron_custom %}<button name="reset" value="1" title="terug naar {{ t.default_cron }}">Terug naar standaard</button>{% endif %}
+        </div>
+      </form>
+    </details>
     {% if t.last %}
     <div class="last">
       <span class="dot d-{{ 'running' if t.last.status=='running' else ('ok' if t.last.status=='ok' else ('warn' if t.last.status=='warning' else 'err')) }}"></span>
@@ -55,4 +86,16 @@
     </div>
     {% endfor %}
   </div>
+  <script>
+    // Show only the picker fields that apply to the chosen frequency.
+    document.querySelectorAll('form.picker').forEach(function (f) {
+      var freq = f.querySelector('select[name=freq]');
+      function sync() {
+        f.querySelectorAll('[data-for]').forEach(function (el) {
+          el.hidden = el.dataset.for.split(' ').indexOf(freq.value) < 0;
+        });
+      }
+      freq.addEventListener('change', sync); sync();
+    });
+  </script>
 {% endblock %}

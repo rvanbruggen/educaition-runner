@@ -20,6 +20,7 @@ import db
 import llm
 import repo
 import runner
+import schedule
 import sources
 import vocab
 from version import __version__
@@ -127,11 +128,14 @@ def _task_view():
             next_run = job.next_run_time.strftime("%a %d %b %H:%M")
         cron = _cron_for(task_id)
         custom = cron != cfg["cron"]
-        schedule = (f"aangepast: {cron} (standaard {cfg['schedule_label']})"
-                    if custom else cfg["schedule_label"])
+        label = (f"{schedule.describe(cron)} (aangepast; standaard {cfg['schedule_label']})"
+                 if custom else cfg["schedule_label"])
+        picker = schedule.parse(cron) or {"freq": "daily", "every": 2, "hour": 5,
+                                          "minute": 0, "days": ["sun"]}
         out.append({
-            "id": task_id, "name": cfg["name"], "schedule": schedule,
+            "id": task_id, "name": cfg["name"], "schedule": label,
             "cron": cron, "cron_custom": custom, "default_cron": cfg["cron"],
+            "picker": picker, "picker_ok": schedule.parse(cron) is not None,
             "enabled": enabled, "last": last, "overdue": overdue, "mode": mode,
             "running": bool(last and last["status"] == "running"),
             "next_run": next_run,
@@ -144,6 +148,7 @@ def _task_view():
 def dashboard(request: Request):
     return render("dashboard.html", request, active="dash",
                   tasks=_task_view(), runs=db.recent_runs(30), tz=TZ,
+                  days=schedule.DAYS, every_choices=schedule.EVERY_CHOICES,
                   month_cost=db.month_cost(), task_names={k: v["name"] for k, v in TASKS.items()})
 
 
@@ -165,7 +170,14 @@ async def schedule_save(task_id: str, request: Request):
     if task_id not in TASKS:
         raise HTTPException(404)
     form = await request.form()
-    cron = " ".join(str(form.get("cron", "")).split())
+    cron = " ".join(str(form.get("cron", "")).split())   # "Geavanceerd": raw cron wins
+    if not cron and not form.get("reset"):
+        try:
+            cron = schedule.build(str(form.get("freq", "")), str(form.get("every", "")),
+                                  str(form.get("time", "")), form.getlist("days"),
+                                  minute=str(form.get("minute", "")))
+        except ValueError as exc:
+            return back("/", f"Schema van {TASKS[task_id]['name']} niet bewaard: {exc}")
     if form.get("reset") or cron == TASKS[task_id]["cron"]:
         db.delete_setting(f"cron_{task_id}")
         cron = TASKS[task_id]["cron"]
@@ -177,7 +189,7 @@ async def schedule_save(task_id: str, request: Request):
             return back("/", f"Ongeldige cron '{cron}': {exc}. "
                              "Formaat: minuut uur dag maand weekdag (bv. 8 5 * * * of 7 18 * * sun).")
         db.set_setting(f"cron_{task_id}", cron)
-        msg = f"Schema van {TASKS[task_id]['name']} bewaard: {cron}."
+        msg = f"Schema van {TASKS[task_id]['name']} bewaard: {schedule.describe(cron)}."
     scheduler.reschedule_job(task_id, trigger=CronTrigger.from_crontab(cron, timezone=TZ))
     return back("/", msg)
 
