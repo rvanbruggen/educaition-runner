@@ -309,3 +309,8 @@ def set_setting(key: str, value: str):
     with conn() as c:
         c.execute("INSERT INTO settings (key, value) VALUES (?,?) "
                   "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+
+
+def delete_setting(key: str):
+    with conn() as c:
+        c.execute("DELETE FROM settings WHERE key=?", (key,))

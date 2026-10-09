@@ -21,6 +21,13 @@
       {% if t.mode != 'off' %}<form method="post" action="/toggle/{{ t.id }}"><button>{{ 'Pauzeer' if t.enabled else 'Hervat' }}</button></form>{% endif %}
     </div>
     <div class="meta">{{ t.schedule }} &middot; volgende run: {{ t.next_run }}</div>
+    <form method="post" action="/schedule/{{ t.id }}" class="row sched">
+      <label for="cron-{{ t.id }}" class="meta">Schema (cron, {{ tz }}):</label>
+      <input type="text" id="cron-{{ t.id }}" name="cron" value="{{ t.cron }}" size="16"
+             pattern="\S+( +\S+){4}" title="minuut uur dag maand weekdag">
+      <button>Bewaar</button>
+      {% if t.cron_custom %}<button name="reset" value="1" title="terug naar {{ t.default_cron }}">Standaard</button>{% endif %}
+    </form>
     {% if t.last %}
     <div class="last">
       <span class="dot d-{{ 'running' if t.last.status=='running' else ('ok' if t.last.status=='ok' else ('warn' if t.last.status=='warning' else 'err')) }}"></span>

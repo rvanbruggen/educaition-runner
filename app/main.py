@@ -80,13 +80,24 @@ def _job(task_id: str):
     runner.execute_task(task_id, TASKS[task_id], trigger="schedule")
 
 
+def _cron_for(task_id: str) -> str:
+    """Effective cron: the override saved from the dashboard, else tasks.yml."""
+    return db.get_setting(f"cron_{task_id}") or TASKS[task_id]["cron"]
+
+
 @app.on_event("startup")
 def startup():
     db.init()
     db.mark_stale_runs()
-    for task_id, cfg in TASKS.items():
-        scheduler.add_job(_job, CronTrigger.from_crontab(cfg["cron"], timezone=TZ),
-                          args=[task_id], id=task_id, max_instances=1,
+    for task_id in TASKS:
+        cron = _cron_for(task_id)
+        try:
+            trigger = CronTrigger.from_crontab(cron, timezone=TZ)
+        except ValueError:
+            log.warning("Ongeldige cron %r voor %s; terug naar tasks.yml", cron, task_id)
+            db.delete_setting(f"cron_{task_id}")
+            trigger = CronTrigger.from_crontab(TASKS[task_id]["cron"], timezone=TZ)
+        scheduler.add_job(_job, trigger, args=[task_id], id=task_id, max_instances=1,
                           misfire_grace_time=3600, coalesce=True)
     scheduler.start()
     log.info("Scheduler gestart met %d taken (TZ=%s)", len(TASKS), TZ)
@@ -114,8 +125,13 @@ def _task_view():
         next_run = "—"
         if mode != "off" and job and job.next_run_time:
             next_run = job.next_run_time.strftime("%a %d %b %H:%M")
+        cron = _cron_for(task_id)
+        custom = cron != cfg["cron"]
+        schedule = (f"aangepast: {cron} (standaard {cfg['schedule_label']})"
+                    if custom else cfg["schedule_label"])
         out.append({
-            "id": task_id, "name": cfg["name"], "schedule": cfg["schedule_label"],
+            "id": task_id, "name": cfg["name"], "schedule": schedule,
+            "cron": cron, "cron_custom": custom, "default_cron": cfg["cron"],
             "enabled": enabled, "last": last, "overdue": overdue, "mode": mode,
             "running": bool(last and last["status"] == "running"),
             "next_run": next_run,
@@ -127,7 +143,7 @@ def _task_view():
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
     return render("dashboard.html", request, active="dash",
-                  tasks=_task_view(), runs=db.recent_runs(30),
+                  tasks=_task_view(), runs=db.recent_runs(30), tz=TZ,
                   month_cost=db.month_cost(), task_names={k: v["name"] for k, v in TASKS.items()})
 
 
@@ -141,6 +157,29 @@ def run_now(task_id: str):
                      args=(task_id, TASKS[task_id]), kwargs={"trigger": "manual"},
                      daemon=True).start()
     return back("/")
+
+
+@app.post("/schedule/{task_id}")
+async def schedule_save(task_id: str, request: Request):
+    """Change a task's cron from the dashboard; takes effect without a restart."""
+    if task_id not in TASKS:
+        raise HTTPException(404)
+    form = await request.form()
+    cron = " ".join(str(form.get("cron", "")).split())
+    if form.get("reset") or cron == TASKS[task_id]["cron"]:
+        db.delete_setting(f"cron_{task_id}")
+        cron = TASKS[task_id]["cron"]
+        msg = f"Schema van {TASKS[task_id]['name']} terug op standaard ({cron})."
+    else:
+        try:
+            CronTrigger.from_crontab(cron, timezone=TZ)
+        except ValueError as exc:
+            return back("/", f"Ongeldige cron '{cron}': {exc}. "
+                             "Formaat: minuut uur dag maand weekdag (bv. 8 5 * * * of 7 18 * * sun).")
+        db.set_setting(f"cron_{task_id}", cron)
+        msg = f"Schema van {TASKS[task_id]['name']} bewaard: {cron}."
+    scheduler.reschedule_job(task_id, trigger=CronTrigger.from_crontab(cron, timezone=TZ))
+    return back("/", msg)
 
 
 @app.post("/toggle/{task_id}")
